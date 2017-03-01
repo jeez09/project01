@@ -1,0 +1,156 @@
+<?php
+
+            add_filter( 'pods_api_pre_save_pod_item_gurucalls', 'phase1_slug_set_title', 10, 2);
+            function phase1_slug_set_title($pieces, $is_new_item) {
+
+   //make sure that all   fields are active
+    $fields = array( 'post_title','custom_title', 'script' , 'action','call_type','call_start_date_and_time',
+     'call_end_date_and_time','call_system_date_and_time','call_status','current_price','expected_target_value','trigger_price','stop_loss','profit_points_from_this_call','loss_points_from_this_call','profit_percent_from_this_call','loss_percent_from_this_call','current_points_pl',
+        'current_percent_pl','payout_for_this_call'
+
+
+     );
+    foreach( $fields as $field ) {
+        
+        if ( ! in_array( $field, $pieces[ 'fields_active'] ) ) {    
+            
+            $pieces['fields_active'][] = $field;
+
+
+        }
+    }
+        //set post title using pod field script
+     $var_call_status = $pieces[ 'fields' ][ 'call_status' ][ 'value'];
+     if($var_call_status == "Pre_Active")
+    {
+     $var_f6_action = $pieces[ 'fields' ][ 'action' ][ 'value'];
+     $var_s8 = $pieces[ 'fields' ][ 'trigger_price' ][ 'value'];
+     $var_s9 = $pieces[ 'fields' ][ 'expected_target_value' ][ 'value'];
+     $var_s10 = $pieces[ 'fields' ][ 'stop_loss' ][ 'value'];
+
+     $var_buy_prof_point = $var_s9 - $var_s8;
+     $var_sell_prof_point = $var_s8 - $var_s9;
+
+     $var_buy_loss_point = $var_s10 - $var_s9;
+     $var_sell_loss_point = $var_s9 - $var_s10;
+
+
+     $var_buy_prof_percent = ((($var_s9 - $var_s8)/($var_s8))*100);
+     $var_sell_prof_percent = ((($var_s8 - $var_s9)/($var_s9))*100);
+
+     $var_buy_loss_percent = ((($var_s10 - $var_s9)/($var_s8))*100);
+     $var_sell_loss_percent = ((($var_s9 - $var_s10)/($var_s8))*100);
+
+
+       $error_ind = "N";
+        if(($var_f6_action == "BUY") && ($var_s9 <= $var_s8) )
+           {
+            $error_ind = "Y";
+            return pods_error('Target Price should be greater than Trigger price for an BUY call' );
+            } 
+         $error_ind = "N";               
+        if(($var_f6_action == "SELL") && ($var_s9 >= $var_s8) )
+           {
+            $error_ind = "Y";
+            return pods_error( 'Target Price should be lesser than Trigger price for an SHORT/SELL call' );
+                        } 
+         $error_ind = "N";                 
+         if(($var_f6_action == "BUY") && ($var_s10 >= $var_s8) )
+           {
+            $error_ind = "Y";
+            return pods_error( 'Stop Loss Price should be lesser than Trigger price for an BUY call' );
+                        } 
+        $error_ind = "N";                
+        if(($var_f6_action == "SELL") && ($var_s10 <= $var_s8) )
+           {
+            $error_ind = "Y";
+            return pods_error( 'Stop loss price should be greater than Trigger price for an SHORT/SELL call' );
+           }       
+
+
+
+    $var_start_date1 = $pieces[ 'fields' ][ 'call_start_date_and_time' ][ 'value'];
+     $var_end_date1 = $pieces[ 'fields' ][ 'call_end_date_and_time' ][ 'value'];
+     $currentdate1 = date( 'Y-m-d h:ia', current_time( 'timestamp' ) );
+
+ 
+
+$hr24 = 24;
+$hr720 = 720;
+$var_start_date =  strtotime($var_start_date1);
+$var_end_date   =  strtotime($var_end_date1);
+$currentdate    =  strtotime($currentdate1);
+
+$cond1 = round(abs($var_start_date - $currentdate) / 3600,2);
+$cond2 = round(abs($var_end_date - $currentdate ) / 3600,2);
+
+$round_cond1 = round($cond1,0);
+$round_cond2 = round($cond2,0);
+
+        $error_ind = "N";
+        if($var_start_date < $currentdate)
+           {
+            $error_ind = "Y";
+            return pods_error('Call START DATE AND TIME should be greater than current date and time ' );
+            } 
+       $error_ind = "N";
+        if($var_end_date < $currentdate)
+           {
+            $error_ind = "Y";
+            return pods_error('Call END DATE should be greater than current date and time ' );
+            } 
+        $error_ind = "N";
+        if($var_end_date <= $var_start_date)
+           {
+            $error_ind = "Y";
+            return pods_error('End date and time should be greater than call given start date and time ' );
+            } 
+        $error_ind = "N";
+        if($round_cond1 > $hr24)
+           {
+               $error_ind = "Y";
+            return pods_error('Call given start date must be within 24hrs from now .' );
+            }    
+        $error_ind = "N";    
+        if($round_cond2 > $hr720)
+           {
+      $error_ind = "Y";
+            return pods_error('Call end date should be max within 30 days from current date ' );
+            }      
+
+
+         
+If ($error_ind == "Y")
+{
+    return pods_error( 'There is some issue in form submission recheck and submit it ' );
+}
+
+   else
+{    
+
+        if ($pieces[ 'fields' ][ 'action' ][ 'value'] == "BUY")
+        {
+            $pieces[ 'fields' ][ 'profit_points_from_this_call' ][ 'value'] =   $var_buy_prof_point; 
+            $pieces[ 'fields' ][ 'loss_points_from_this_call' ][ 'value']   =   $var_buy_loss_point;
+            $pieces[ 'fields' ][ 'profit_percent_from_this_call' ][ 'value'] =   $var_buy_prof_percent;
+            $pieces[ 'fields' ][ 'loss_percent_from_this_call' ][ 'value'] =   $var_buy_loss_percent;
+            
+
+        }
+        if ($pieces[ 'fields' ][ 'action' ][ 'value'] == "SELL")
+            {
+
+            $pieces[ 'fields' ][ 'profit_points_from_this_call' ][ 'value'] =  $var_sell_prof_point;
+            $pieces[ 'fields' ][ 'loss_points_from_this_call' ][ 'value']    = $var_sell_loss_point;
+            $pieces[ 'fields' ][ 'profit_percent_from_this_call' ][ 'value'] =  $var_sell_prof_percent;
+            $pieces[ 'fields' ][ 'loss_percent_from_this_call' ][ 'value'] =   $var_sell_loss_percent;
+        }
+    //return $pieces to save   
+    $pieces[ 'object_fields' ][ 'post_title' ][ 'value' ] =  'Earn '.$pieces[ 'fields' ][ 'profit_points_from_this_call' ][ 'value'].' ₹/share from this Master call' ;
+    
+    $pieces[ 'fields' ][ 'call_status' ][ 'value'] = "Active"; 
+
+    return $pieces;
+}
+}
+}
