@@ -1,0 +1,40 @@
+/**
+ * Redirect Users from Page Based on Balance
+ * @version 1.0
+ */
+add_action( 'template_redirect', 'mycred_pro_restrict_page_access' );
+function mycred_pro_restrict_page_access() {
+
+	// Only applicable to the page with the ID 40
+	if ( ! is_page( 40 ) ) return;
+
+	$redirect = false;
+
+	// Redirect visitors
+	if ( ! is_user_logged_in() )
+		$redirect = true;
+
+	// Logged in users need a balance check
+	if ( ! $redirect && function_exists( 'mycred' ) ) {
+
+		$point_type = 'mycred_default';
+		$min_balance = 100;
+
+		$mycred = mycred( $point_type );
+		$balance = $mycred->get_users_balance( get_current_user_id(), $point_type );
+
+		// Check balance against minimum requirement
+		if ( $balance < $min_balance )
+			$redirect = true;
+
+	}
+
+	// Do the redirect
+	if ( $redirect ) {
+
+		wp_redirect( get_permalink( 22 ) );
+		exit;
+
+	}
+
+}
