@@ -1,0 +1,115 @@
+class WPGamify_Points_Override {
+
+    public function __construct() {
+        add_filter('mycred_add', array($this, 'add_creds_filter'), 99, 3);
+        add_filter('mycred_add_finished', array($this, 'mycred_add_finished_filter'), 99, 3);
+        
+    }
+
+    public function add_creds_filter($execute, $args, $settings) {
+        extract($args);
+        // Acceptable answers:
+        // true (boolean)  - "Yes" let myCRED add points and log the event
+        if ($execute === true) {
+
+            // Allow the adjustment of the values before we run them
+            $run_this = apply_filters('mycred_run_this', compact('ref', 'user_id', 'amount', 'entry', 'ref_id', 'data', 'type'), $settings);
+
+            // Add to log
+            $id = $this->add_to_log(
+                    $run_this['ref'], $run_this['user_id'], $run_this['amount'], $run_this['entry'], $run_this['ref_id'], $run_this['data'], $run_this['type'], $settings
+            );
+
+            // Update balance
+            $settings->update_users_balance((int) $run_this['user_id'], $run_this['amount'], $run_this['type']);
+        } else {
+            $run_this = false;
+        }
+
+        // For all features that need to run once we have done or not done something
+        remove_filter('mycred_add_finished', array($this, 'mycred_add_finished_filter'));
+        apply_filters('mycred_add_finished', $execute, $run_this, $settings);
+        add_filter('mycred_add_finished', array($this, 'mycred_add_finished_filter'), 99, 3);
+        return $id;
+    }
+
+    /**
+     * Add Log Entry
+     * Adds a new entry into the log. A reference id, user id and number of credits must be set.
+     *
+     * @param $ref (string), required reference id
+     * @param $user_id (int), required id of the user who will get these points
+     * @param $cred (int|float), required number of creds to give or deduct from the given user.
+     * @param $ref_id (array), optional array of reference IDs allowing the use of content specific keywords in the log entry
+     * @param $data (object|array|string|int), optional extra data to save in the log. Note that arrays gets serialized!
+     * @returns boolean true on success or false on fail
+     * @version 1.1
+     */
+    public function add_to_log($ref = '', $user_id = '', $amount = '', $entry = '', $ref_id = '', $data = '', $type = 'mycred_default', $settings) {
+
+        // Minimum Requirements: Reference not empty, User ID not empty and Amount is not empty
+        if (empty($ref) || empty($user_id) || empty($amount) || empty($entry))
+            return false;
+
+        // Amount can not be zero!
+        if ($amount == $settings->zero() || $amount == 0)
+            return false;
+
+        global $wpdb;
+
+        // Strip HTML from log entry
+        $entry = $settings->allowed_tags($entry);
+
+        // Enforce max
+        if ($settings->max() > $settings->zero() && $amount > $settings->max()) {
+            $amount = $settings->number($settings->max());
+        }
+
+        // Type
+        if (empty($type))
+            $type = $settings->get_cred_id();
+
+        // Creds format
+        if ($settings->format['decimals'] > 0)
+            $format = '%f';
+        elseif ($settings->format['decimals'] == 0)
+            $format = '%d';
+        else
+            $format = '%s';
+
+        $time = apply_filters('mycred_log_time', date_i18n('U'), $ref, $user_id, $amount, $entry, $ref_id, $data, $type);
+
+        // Insert into DB
+        $new_entry = $wpdb->insert(
+                $settings->log_table, array(
+            'ref' => $ref,
+            'ref_id' => $ref_id,
+            'user_id' => (int) $user_id,
+            'creds' => $amount,
+            'ctype' => $type,
+            'time' => $time,
+            'entry' => $entry,
+            'data' => ( is_array($data) || is_object($data) ) ? serialize($data) : $data
+                ), array('%s', '%d', '%d', $format, '%s', '%d', '%s', ( is_numeric($data) ) ? '%d' : '%s')
+        );
+
+        // $wpdb->insert returns false on fail
+        if (!$new_entry)
+            return false;
+
+        do_action('mycred_log_points', $ref, $ref_id, (int) $user_id, $amount, $type, $time, $entry, $data);
+
+        delete_transient('mycred_log_entries');
+        return $wpdb->insert_id;
+    }
+    
+    public function mycred_add_finished_filter($execute, $run_this, $settings){
+        if(is_numeric($execute)){
+            return TRUE; 
+        }else{
+            return $execute;
+        }
+        
+    }
+
+}
