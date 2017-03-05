@@ -1,0 +1,16 @@
+<?php
+
+$currentdate1 = date( 'Y-m-d H:i', current_time( 'timestamp' ) );
+$currentdate        =  strtotime($currentdate1);
+echo "currentdate1--->".$currentdate1;
+echo "currentdate--->".$currentdate;
+
+$date = '2014-04-01 18:30:00'; 
+$datetime = DateTime::createFromFormat('Y-m-d H:??', $currentdate1);  
+//echo "datetime--->".$datetime;
+
+$start = $datetime->format('g A'); 
+$end   = $datetime->modify('next hour')->format('g A');
+
+echo "Scheduled between $start and $end.";  
+?> 
