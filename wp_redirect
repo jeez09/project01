@@ -1,1 +1,27 @@
 https://digwp.com/2011/08/how-to-redirect-logged-in-users/
+
+//for personal messegeon an page
+function wpdocs_personal_message_when_logged_in() {
+    if ( !is_user_logged_in() && is_page_template('template-dashboard.php') ) {
+        echo( 'Non-Personalized Message!' );
+            
+        
+    } else {
+        $current_user = wp_get_current_user();
+        printf( 'Personal Message For %s!', esc_html( $current_user->user_firstname ) );
+    }
+}
+add_action( 'loop_start', 'wpdocs_personal_message_when_logged_in' );
+
+//for private pages 
+add_action( 'template_redirect', function(){
+
+    // no non-authenticated users allowed
+    if( ! is_user_logged_in() && is_page_template('template-dashboard.php') )
+    {
+         
+        wp_redirect( home_url( '/login' ), 302 );
+        exit();
+        
+    }
+});
