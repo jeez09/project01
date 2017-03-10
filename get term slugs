@@ -1,0 +1,10 @@
+$product_terms = wp_get_object_terms( $_post->ID,  '$taxonomy' );
+if ( ! empty( $product_terms ) ) {
+    if ( ! is_wp_error( $product_terms ) ) {
+        
+            foreach( $product_terms as $term ) {
+                $terms = esc_html( $term->name ); 
+            }
+        ;
+    }
+}
