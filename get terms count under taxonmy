@@ -1,0 +1,16 @@
+<?php 
+
+  $terms = get_terms('countries'); 
+  if ( !empty( $terms ) && !is_wp_error( $terms ) ){ 
+  echo '<ul>'; 
+
+  foreach ( $terms as $term ) { 
+     $term = sanitize_term( $term, 'countries' ); 
+     $term_link = get_term_link( $term, 'countries' ); 
+
+      echo '<li><a href="' . esc_url( $term_link ) . '">' . $term->name . '&nbsp;(' . $term->count . ')' . '</a></li>'; 
+  } 
+  echo '</ul>';
+  }
+
+?> 
